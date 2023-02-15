@@ -1,0 +1,184 @@
+#include "stdafx.h"
+#include <cstdlib>
+#include <ctime>
+#include <fstream>
+#define default_speed 300
+
+void drawScene();
+void handleKeypress(unsigned char key, int x, int y);
+void rysuj_kostke(float x, float y,int w, float *kolor);
+void rysuj_gre();
+void update(int value);
+void end_game();
+
+int h=31,w=19;				
+cegielka *element;			
+pole obszar(h,w);		
+ofstream wynik;				
+int score=0;				
+int speed=default_speed;	
+bool mov = false;										
+float kolor[][3] = 
+{
+	{0.2,0.2,0.2},		
+	{0.88,0.93,0.88},
+	{0.54,0.17,0.89},{0.5,1,0},{0.18,0.31,0.31},{1,0.14,0},{1,1,0},{1,0.41,0.71},{0.55,0.15,0},{0.75,0.24,1}
+};
+
+int _tmain(int argc, char** argv)
+{
+	glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+    glutInitWindowSize(400, 800);
+  
+    glutCreateWindow("Tetris");
+    initRendering(); 
+	
+    glutDisplayFunc(drawScene);
+    glutKeyboardFunc(handleKeypress);
+    glutReshapeFunc(handleResize);
+	glutTimerFunc(25, update, 0);
+	
+	glutMainLoop();
+
+	system("pause");
+	return 0;
+}
+void drawScene() {
+    
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glMatrixMode(GL_MODELVIEW); 
+    glLoadIdentity(); 
+	
+	glPushMatrix();
+	glTranslatef(0,0,-50);
+	rysuj_gre();
+	glPopMatrix();
+	
+	glutSwapBuffers();
+}
+
+void handleKeypress(unsigned char key, 
+                    int x, int y) {    
+    switch (key) {
+        case 27: 
+			end_game();
+		case 'a':
+			if (element->l_check(obszar.wsk))
+			{
+				element->mov_left(obszar.wsk);
+			}
+			break;
+		case 'd':
+			if (element->r_check(obszar.wsk))
+			{
+				element->mov_right(obszar.wsk);
+			}
+			break;
+		case 's':
+			if (mov)
+			{
+			if (element->rot_check(obszar.wsk))
+			{
+				element = element->rotate(obszar.wsk,w);
+			}
+			}
+			break;
+		case 'f':
+			speed=20;
+			break;
+    }
+	glutPostRedisplay();
+}
+
+void update(int value) 
+{
+	if (!mov)
+	{
+		obszar.line_check();				
+		
+		if (obszar.wsk[2][7]!=0)			
+			end_game();
+		}
+
+		speed = default_speed;
+		
+		srand (time(NULL));					
+
+		int ktory;
+		do					
+		{
+			ktory = rand() % 19;
+		}while (!(ktory == 0 || ktory == 1 || ktory == 2 || ktory == 4 || ktory == 6 || ktory == 10 || ktory == 14 || ktory == 15));
+		
+	
+
+		int wybor_koloru = rand() % 8 + 1;	
+
+		element = new cegielka(wybor_koloru, ktory, 7, 2, obszar.wsk);		
+		mov=true;
+	}else
+	{	
+		mov = element->d_check(obszar.wsk);					
+		if (mov == true) element->mov_down(obszar.wsk);		
+		if (mov == false) delete element;					
+	}
+	
+    glutPostRedisplay();
+    glutTimerFunc(speed, update, 0);
+
+void rysuj_kostke(float x, float y,int w, float *kolor)
+
+{
+	glBegin(GL_QUADS);
+
+	glColor3f(*(kolor+0+(w+1)*3),*(kolor+1+(w+1)*3),*(kolor+2+(w+1)*3));
+    glVertex3f(x, y, 0);
+    glVertex3f(x, y-1, 0);
+    glVertex3f(x+1, y-1, 0);
+    glVertex3f(x+1, y, 0);
+    
+    glEnd();
+
+	/
+	if (w>0)
+	{
+		glBegin(GL_LINES);
+
+		glColor3f(0,0,0);
+		
+		glVertex3f(x, y, 0.0001);
+		glVertex3f(x, y-1, 0.0001);
+		
+		glVertex3f(x, y-1, 0.0001);
+		glVertex3f(x+1, y-1, 0.0001);
+		
+		glVertex3f(x, y, 0.0001);
+		glVertex3f(x+1, y, 0.0001);
+		
+		glVertex3f(x+1, y, 0.0001);
+		glVertex3f(x+1, y-1, 0.0001);
+		glEnd();
+	}
+}
+
+void rysuj_gre()
+{
+	//wizualizuje macierz bedaca obszarem gry
+	for (int i=0; i<obszar.zwroc_wysokosc(); i++)
+	{
+		for (int j=0; j<obszar.zwroc_szerokosc(); j++)
+		{
+			rysuj_kostke(j-9,-i+15,obszar.zwroc_komorke(i,j),&kolor[0][0]);
+		}
+	}
+}
+void end_game()
+{
+	
+	score = obszar.get_score();
+	wynik.open("score.txt",fstream::app);
+	wynik<<"Twoj wynik to: "<<score<<endl;
+	wynik.close();
+    exit(0); m
+}
